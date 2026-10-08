@@ -262,6 +262,8 @@ class SelectDialog(QDialog):
         self.list.currentItemChanged.connect(self._on_select)
         self.list.itemDoubleClicked.connect(lambda _: self.accept())
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        bb.button(QDialogButtonBox.StandardButton.Ok).setText("Başlat")
+        bb.button(QDialogButtonBox.StandardButton.Cancel).setText("İptal")
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
         lay.addWidget(bb)
@@ -447,6 +449,8 @@ class App(QObject):
                 self.cfg.save_profile(self.title, self.profile)
                 self._update_capture()
                 self.pipeline.force()
+            self._emit_report({"event": "edit", "on": editing,
+                               "exstyle": winapi.get_exstyle(self.overlay.hwnd())})
         elif name == "mode":
             mode = "free" if self.profile["mode"] == "fixed" else "fixed"
             self.profile["mode"] = mode

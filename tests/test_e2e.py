@@ -211,13 +211,17 @@ def test_edit_mode_moves_box_and_saves_profile(procs):
         ev = app.wait_for(lambda e: e["event"] == "overlay" and e["rects"], 30)
         x, y, w, h = ev["rects"][0]
         press_hotkey(ord("E"))
-        time.sleep(0.5)
+        on = app.wait_for(lambda e: e["event"] == "edit", 5)
+        assert on and on["on"], "düzenleme moduna girilmedi"
+        assert not on["exstyle"] & 0x20, "düzenleme modunda overlay hâlâ tıklamayı geçiriyor"
+        time.sleep(0.3)
         drag(x + w // 2, y + h // 2, x + w // 2, y + h // 2 - 300)  # kutuyu 300 px yukarı taşı
         moved = app.wait_for(lambda e: e["event"] == "overlay" and e["rects"]
                              and e["rects"][0][1] <= y - 250, 5)
         assert moved, "düzenleme modunda kutu taşınmadı"
         press_hotkey(ord("E"))  # çıkış -> profil kaydı
-        time.sleep(1.0)
+        off = app.wait_for(lambda e: e["event"] == "edit", 5)
+        assert off and not off["on"] and off["exstyle"] & 0x20, "normal moda dönülmedi"
         prof = Config().profile(title)
         # Varsayılan kutu istemci alanında y=518'de (720 * 0.72); 300 px yukarı taşındı.
         assert prof["box"] is not None and prof["box"][1] < 518 - 250
@@ -228,3 +232,17 @@ def test_edit_mode_moves_box_and_saves_profile(procs):
         cfg = Config()
         cfg.data["profiles"].pop(title, None)
         cfg.save()
+
+
+def test_window_closed_notifies(procs):
+    title = "Fake Game E2E Close"
+    game = start_game(procs, title, "--blank")
+    time.sleep(1.5)
+    app = start_app(procs, title, "fixed")
+    assert app.wait_for(lambda e: e["event"] == "started", 30)
+    game.kill()
+    seen = set()
+    app.wait_for(lambda e: seen.add(e["event"]) or {"window_closed", "notify"} <= seen, 10)
+    assert "window_closed" in seen, "pencere kapanması fark edilmedi"
+    assert "notify" in seen, "bildirim gösterilmedi"
+    assert app.p.poll() is None, "uygulama çöktü"

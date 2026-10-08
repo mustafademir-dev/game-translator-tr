@@ -9,7 +9,7 @@ class Grabber:
 
     def __init__(self):
         import mss
-        self._sct = mss.mss()
+        self._sct = (getattr(mss, "MSS", None) or mss.mss)()  # mss 10: MSS, eskisi: mss
 
     def grab(self, x: int, y: int, w: int, h: int) -> np.ndarray:
         shot = self._sct.grab({"left": x, "top": y, "width": w, "height": h})

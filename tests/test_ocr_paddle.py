@@ -1,5 +1,6 @@
 """PaddleOCR testi (isteğe bağlı kurulum: setup.py --paddle). Kurulu değilse atlanır."""
 import difflib
+import importlib.util
 
 import numpy as np
 import pytest
@@ -8,8 +9,9 @@ from PIL import Image, ImageDraw
 from src.ocr.paddle import PADDLE_DIR
 from test_ocr_windows import SAMPLES, jp_font, render
 
-pytest.importorskip("paddleocr")
-pytestmark = pytest.mark.skipif(not (PADDLE_DIR / "rec").exists(), reason="PaddleOCR modelleri yok")
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("paddleocr") is None or not (PADDLE_DIR / "rec").exists(),
+    reason="PaddleOCR kurulu değil (setup.py --paddle)")
 
 
 @pytest.fixture(scope="module")

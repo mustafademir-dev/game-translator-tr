@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -11,12 +10,16 @@ from src.app_env import setup_offline_env  # noqa: E402
 
 setup_offline_env()
 
+# Uygulamadaki sırayı koru: CTranslate2, Paddle'dan önce yüklenmeli. Paddle'ın DLL'leri
+# önce yüklenirse ctranslate2 importu WinError 127 ile düşüyor.
+import ctranslate2  # noqa: E402,F401
+
 
 @pytest.fixture(scope="session")
 def qapp():
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    # Ortam değişkeni değil argüman: alt süreçlere (sahte oyun, uygulama) miras kalmasın.
     from PyQt6.QtWidgets import QApplication
-    app = QApplication.instance() or QApplication([])
+    app = QApplication.instance() or QApplication(["tests", "-platform", "offscreen"])
     return app
 
 
