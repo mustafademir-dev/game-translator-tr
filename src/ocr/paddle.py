@@ -4,6 +4,8 @@ Modeller kurulumda `models/paddle/` altına indirilir; çalışırken yalnızca 
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 
 from ..config import ROOT
@@ -22,11 +24,20 @@ class PaddleOcrEngine:
             from paddleocr import PaddleOCR
         except ImportError as e:
             raise OcrUnavailableError("PaddleOCR kurulu değil (setup.py --paddle)") from e
-        self._ocr = PaddleOCR(
-            lang="japan", use_angle_cls=False, use_gpu=False, show_log=False,
-            det_model_dir=str(PADDLE_DIR / "det"), rec_model_dir=str(PADDLE_DIR / "rec"),
-            cls_model_dir=str(PADDLE_DIR / "cls"),
-        )
+        # Paddle ASCII dışı mutlak yolları (ör. "Masaüstü") açamıyor: modeller
+        # proje köküne göreli yolla, motor oluşturulurken bir kez yüklenir.
+        cwd = os.getcwd()
+        os.chdir(ROOT)
+        try:
+            self._ocr = PaddleOCR(
+                lang="japan", use_angle_cls=False, use_gpu=False, show_log=False,
+                det_model_dir="models/paddle/det", rec_model_dir="models/paddle/rec",
+                cls_model_dir="models/paddle/cls",
+            )
+        finally:
+            os.chdir(cwd)
+        # İlk çağrı çok yavaş (~10 s); ilk replik kaçmasın diye şimdi ısıt.
+        self._ocr.ocr(np.full((64, 256, 3), 128, np.uint8), cls=False)
 
     def recognize(self, image: np.ndarray) -> list[TextBlock]:
         bgr = np.ascontiguousarray(image[:, :, :3])

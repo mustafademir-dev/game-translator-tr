@@ -174,6 +174,8 @@ def test_offline_selfcheck():
                          text=True, encoding="utf-8", errors="replace", timeout=300).stdout
     assert "translate_ok" in out
     assert "ocr_ok" in out or "ocr_skipped" in out
+    assert "paddle_ok" in out or "paddle_skipped" in out
+    assert "network_attempts=0" in out
 
 
 def press_hotkey(vk: int) -> None:

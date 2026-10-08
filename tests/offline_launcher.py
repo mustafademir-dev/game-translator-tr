@@ -55,6 +55,17 @@ def selfcheck() -> int:
         print("ocr_ok" if blocks else "ocr_empty", flush=True)
     else:
         print("ocr_skipped", flush=True)
+    try:
+        from src.ocr.paddle import PaddleOcrEngine
+        paddle = PaddleOcrEngine()
+    except Exception:
+        print("paddle_skipped", flush=True)
+    else:
+        img = Image.new("RGB", (600, 100), (30, 30, 60))
+        ImageDraw.Draw(img).text((20, 30), "ちょっと待って！",
+                                 font=ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 30), fill=(255, 255, 255))
+        arr = np.array(img.convert("RGBA"))[:, :, [2, 1, 0, 3]].copy()
+        print("paddle_ok" if paddle.recognize(arr) else "paddle_empty", flush=True)
     print(f"network_attempts={len(ATTEMPTS)}", flush=True)
     return 0
 

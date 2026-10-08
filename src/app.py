@@ -37,6 +37,7 @@ from .translate import Dictionary, TranslationService, contains_japanese  # noqa
 
 MODES = ("fixed", "free")
 MODE_NAMES = {"fixed": "Sabit kutu", "free": "Serbest konum"}
+VERTICAL_MIN_W = 160  # dikey yazı bloklarında çeviri kutusunun en küçük genişliği (px)
 HOTKEY_IDS = {"toggle": 1, "retranslate": 2, "edit": 3, "mode": 4, "debug": 5, "quit": 6}
 
 MSG_MODEL = "Çeviri modeli bulunamadı. Önce 'py -3.11 setup.py' çalıştırın."
@@ -161,6 +162,8 @@ class Pipeline(QThread):
             if cmd == "mode":
                 self._mode = arg
                 detector.reset()
+                if arg == "free":
+                    self._engine()  # OCR motoru ilk karede değil, şimdi yüklensin
             elif cmd == "active":
                 self._active = arg
                 detector.reset()
@@ -206,7 +209,11 @@ class Pipeline(QThread):
         items = []
         for b in blocks:
             bg = edge_color(img, b.x, b.y, b.w, b.h)
-            items.append(OverlayItem(b.x + ox, b.y + oy, b.w, b.h, self._translate(b.text), bg, text_color_for(bg)))
+            x, w = b.x + ox, b.w
+            if b.vertical and w < VERTICAL_MIN_W:
+                # Türkçe yatay yazılır: dar sütunun etrafında okunabilir genişlikte kutu.
+                x, w = max(0, x + w // 2 - VERTICAL_MIN_W // 2), VERTICAL_MIN_W
+            items.append(OverlayItem(x, b.y + oy, w, b.h, self._translate(b.text), bg, text_color_for(bg)))
         t_tr = time.perf_counter()
         self.free_result.emit(items, {
             "capture": (t_cap - t0) * 1000, "ocr": (t_ocr - t_cap) * 1000,

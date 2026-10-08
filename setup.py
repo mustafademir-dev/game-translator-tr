@@ -160,14 +160,15 @@ def install_font() -> None:
 def install_paddle() -> None:
     run([venv_python(), "-m", "pip", "install", "-q", *PADDLE_PACKAGES])
     # Modelleri şimdi indir; uygulama çalışırken bu klasörden okunur.
+    # Göreli yol: Paddle ASCII dışı mutlak yolları (ör. "Masaüstü") açamıyor.
     script = (
         "from paddleocr import PaddleOCR;"
-        f"PaddleOCR(lang='japan', use_angle_cls=False, show_log=False,"
-        f"det_model_dir={str(MODELS / 'paddle' / 'det')!r},"
-        f"rec_model_dir={str(MODELS / 'paddle' / 'rec')!r},"
-        f"cls_model_dir={str(MODELS / 'paddle' / 'cls')!r})"
+        "PaddleOCR(lang='japan', use_angle_cls=False, show_log=False,"
+        "det_model_dir='models/paddle/det', rec_model_dir='models/paddle/rec',"
+        "cls_model_dir='models/paddle/cls')"
     )
-    run([venv_python(), "-c", script])
+    log("PaddleOCR modelleri indiriliyor")
+    subprocess.check_call([str(venv_python()), "-c", script], cwd=ROOT)
 
 
 def write_settings(choice: str) -> None:
