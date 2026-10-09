@@ -1,23 +1,35 @@
-"""Windows dahili OCR (Windows.Media.Ocr), Japonca. Ağ kullanmaz."""
+"""Windows dahili OCR (Windows.Media.Ocr): Japonca, Korece, İngilizce. Ağ kullanmaz."""
 from __future__ import annotations
 
 import time
 
 import numpy as np
 
-from ..translate.text import contains_japanese
+from ..translate.text import DEFAULT_LANG, LANGS, contains_japanese
 from .base import OcrUnavailableError, TextBlock
 from .merge import merge_lines
 
-OCR_CAPABILITY_CMD = 'Add-WindowsCapability -Online -Name "Language.OCR~~~ja-JP~0.0.1.0"'
+
+def ocr_capability_cmd(lang: str = DEFAULT_LANG) -> str:
+    return f'Add-WindowsCapability -Online -Name "{LANGS[lang].ocr_capability}"'
+
+
+OCR_CAPABILITY_CMD = ocr_capability_cmd()
+
+
+def ocr_language_available(lang: str = DEFAULT_LANG) -> bool:
+    """Windows OCR'da bu dilin tanıyıcısı kurulu mu (ör. "ja", "ko", "en-US")."""
+    prefix = LANGS[lang].ocr_tag.split("-")[0].lower()
+    try:
+        from winsdk.windows.media.ocr import OcrEngine as _Engine
+        return any(l.language_tag.lower().split("-")[0] == prefix
+                   for l in _Engine.available_recognizer_languages)
+    except Exception:
+        return False
 
 
 def japanese_ocr_available() -> bool:
-    try:
-        from winsdk.windows.media.ocr import OcrEngine as _Engine
-        return any(l.language_tag.lower().startswith("ja") for l in _Engine.available_recognizer_languages)
-    except Exception:
-        return False
+    return ocr_language_available("ja")
 
 
 def _join_words(words: list[str]) -> str:
@@ -34,14 +46,15 @@ class WindowsOcrEngine:
     # Küçük yazıda tanıma zayıf; bu yükseklikten küçük görüntüler büyütülür.
     MIN_UPSCALE_HEIGHT = 400
 
-    def __init__(self):
-        if not japanese_ocr_available():
-            raise OcrUnavailableError("Windows OCR Japonca dil paketi yok")
+    def __init__(self, lang: str = DEFAULT_LANG):
+        if not ocr_language_available(lang):
+            raise OcrUnavailableError(f"Windows OCR {LANGS[lang].name} dil paketi yok")
         from winsdk.windows.globalization import Language
         from winsdk.windows.media.ocr import OcrEngine as _Engine
-        self._engine = _Engine.try_create_from_language(Language("ja"))
+        self.lang = lang
+        self._engine = _Engine.try_create_from_language(Language(LANGS[lang].ocr_tag))
         if self._engine is None:
-            raise OcrUnavailableError("Windows OCR Japonca motoru oluşturulamadı")
+            raise OcrUnavailableError(f"Windows OCR {LANGS[lang].name} motoru oluşturulamadı")
         self._max_dim = int(_Engine.max_image_dimension)
 
     def _to_bitmap(self, bgra: np.ndarray):
@@ -92,6 +105,6 @@ class WindowsOcrEngine:
             y1 = max(r.y + r.height for r in rects)
             w, h = (x1 - x0) / scale, (y1 - y0) / scale
             text = _join_words([wd.text for wd in words])
-            vertical = len(text) > 1 and h > 2 * w
+            vertical = LANGS[self.lang].vertical and len(text) > 1 and h > 2 * w
             lines.append(TextBlock(text, int(x0 / scale), int(y0 / scale), int(round(w)), int(round(h)), vertical))
-        return merge_lines(lines)
+        return merge_lines(lines, self.lang)

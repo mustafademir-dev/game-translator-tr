@@ -164,3 +164,41 @@ def register_hotkey(hwnd: int, hk_id: int, spec: str) -> bool:
 
 def unregister_hotkey(hwnd: int, hk_id: int) -> None:
     user32.UnregisterHotKey(hwnd, hk_id)
+
+
+# --- tıklayınca çeviriyi silme (oyunda sahne ilerletme) ---
+VK_LBUTTON, VK_RETURN, VK_SPACE = 0x01, 0x0D, 0x20
+user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+user32.GetAsyncKeyState.restype = ctypes.c_short
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+user32.GetAncestor.restype = wintypes.HWND
+GA_ROOT = 2
+
+
+def key_down(vk: int) -> bool:
+    """Tuş / fare düğmesi şu an basılı mı ya da son kontrolden beri basılıp bırakıldı mı.
+    İkinci bit, yoklama aralığından kısa süren hızlı tıklamaları da yakalar."""
+    return bool(user32.GetAsyncKeyState(vk) & 0x8001)
+
+
+def cursor_pos() -> tuple[int, int]:
+    pt = wintypes.POINT()
+    user32.GetCursorPos(ctypes.byref(pt))
+    return pt.x, pt.y
+
+
+def is_foreground(hwnd: int) -> bool:
+    fg = user32.GetForegroundWindow()
+    return bool(fg) and (int(fg) == hwnd or int(user32.GetAncestor(fg, GA_ROOT) or 0) == hwnd)
+user32.WindowFromPoint.argtypes = [wintypes.POINT]
+user32.WindowFromPoint.restype = wintypes.HWND
+
+
+def root_window_at(x: int, y: int) -> int:
+    """Ekran noktasındaki üst seviye pencere. Tıklamayı geçiren (WS_EX_TRANSPARENT) overlay
+    atlanır; yani overlay'in altındaki oyun döner."""
+    hwnd = user32.WindowFromPoint(wintypes.POINT(x, y))
+    if not hwnd:
+        return 0
+    return int(user32.GetAncestor(hwnd, GA_ROOT) or hwnd)

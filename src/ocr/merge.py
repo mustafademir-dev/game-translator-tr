@@ -1,7 +1,7 @@
-"""Satır bloklarını paragraf bloklarına birleştirme ve Japonca olmayanları atma."""
+"""Satır bloklarını paragraf bloklarına birleştirme ve kaynak dilde olmayanları atma."""
 from __future__ import annotations
 
-from ..translate.text import contains_japanese
+from ..translate.text import DEFAULT_LANG, LANGS, contains_language
 from .base import TextBlock
 
 
@@ -10,11 +10,14 @@ def _overlap(a0: int, a1: int, b0: int, b1: int) -> int:
 
 
 def _can_join_horizontal(prev: TextBlock, line: TextBlock) -> bool:
-    size = max(prev.h, 1)
-    if not (0.6 <= line.h / size <= 1.6):
+    # Toleranslar geniş: OCR satır kutusu yüksekliği harflere göre oynar (yalnızca hiragana olan
+    # satır daha kısa ölçülür), oyunlar da satır aralığını geniş tutabilir. Dar tutunca aynı
+    # replik 2-3 parçaya bölünüp ayrı ayrı (anlamsız) çevriliyordu.
+    size = max(prev.h, line.h, 1)
+    if not (0.5 <= line.h / max(prev.h, 1) <= 2.0):
         return False
     gap = line.y - (prev.y + prev.h)
-    if gap < -0.5 * size or gap > 1.0 * size:
+    if gap < -0.5 * size or gap > 1.5 * size:
         return False
     # Yatayda örtüşme ya da sol kenar hizası (paragrafın ilk satırı girintili olabilir).
     return (_overlap(prev.x, prev.x + prev.w, line.x, line.x + line.w) > 0
@@ -33,12 +36,12 @@ def _can_join_vertical(prev: TextBlock, col: TextBlock) -> bool:
             or abs(prev.y - col.y) <= 2 * size)
 
 
-def _union(blocks: list[TextBlock], vertical: bool) -> TextBlock:
+def _union(blocks: list[TextBlock], vertical: bool, sep: str) -> TextBlock:
     x0 = min(b.x for b in blocks)
     y0 = min(b.y for b in blocks)
     x1 = max(b.x + b.w for b in blocks)
     y1 = max(b.y + b.h for b in blocks)
-    return TextBlock("".join(b.text for b in blocks), x0, y0, x1 - x0, y1 - y0, vertical)
+    return TextBlock(sep.join(b.text for b in blocks), x0, y0, x1 - x0, y1 - y0, vertical)
 
 
 def _same_row(a: TextBlock, b: TextBlock) -> bool:
@@ -50,7 +53,7 @@ def _same_row(a: TextBlock, b: TextBlock) -> bool:
     return gap <= 2 * max(a.h, b.h)
 
 
-def _join_rows(lines: list[TextBlock]) -> list[TextBlock]:
+def _join_rows(lines: list[TextBlock], sep: str) -> list[TextBlock]:
     rows: list[list[TextBlock]] = []
     for line in sorted(lines, key=lambda b: b.x):
         for r in rows:
@@ -59,14 +62,30 @@ def _join_rows(lines: list[TextBlock]) -> list[TextBlock]:
                 break
         else:
             rows.append([line])
-    return [_union(r, False) for r in rows]
+    return [_union(r, False, sep) for r in rows]
 
 
-def merge_lines(lines: list[TextBlock]) -> list[TextBlock]:
-    """Aynı paragrafa ait yakın satırları tek blokta birleştirir; Japonca içermeyenleri atar."""
+def merge_all(blocks: list[TextBlock], lang: str = DEFAULT_LANG) -> list[TextBlock]:
+    """Tüm blokları okuma sırasıyla tek blokta birleştirir (tarama alanı diyalog kutusuna
+    sınırlıyken: kutudaki yazının tamamı tek replik)."""
+    if len(blocks) <= 1:
+        return blocks
+    sep = "" if LANGS[lang].joins_without_space else " "
+    vertical = all(b.vertical for b in blocks)
+    order = (sorted(blocks, key=lambda b: (-(b.x + b.w), b.y)) if vertical
+             else sorted(blocks, key=lambda b: (b.y, b.x)))
+    return [_union(order, vertical, sep)]
+
+
+def merge_lines(lines: list[TextBlock], lang: str = DEFAULT_LANG) -> list[TextBlock]:
+    """Aynı paragrafa ait yakın satırları tek blokta birleştirir; kaynak dili içermeyenleri atar.
+    Japonca satırlar boşluksuz, Korece/İngilizce satırlar boşlukla birleşir."""
+    sep = "" if LANGS[lang].joins_without_space else " "
     lines = [l for l in lines if l.text.strip()]
-    horiz = _join_rows([l for l in lines if not l.vertical])
-    lines = [l for l in horiz + [l for l in lines if l.vertical] if contains_japanese(l.text)]
+    if not LANGS[lang].vertical:
+        lines = [TextBlock(l.text, l.x, l.y, l.w, l.h, False) for l in lines]
+    horiz = _join_rows([l for l in lines if not l.vertical], sep)
+    lines = [l for l in horiz + [l for l in lines if l.vertical] if contains_language(l.text, lang)]
     horiz = sorted((l for l in lines if not l.vertical), key=lambda b: (b.y, b.x))
     vert = sorted((l for l in lines if l.vertical), key=lambda b: (-(b.x + b.w), b.y))
 
@@ -80,5 +99,5 @@ def merge_lines(lines: list[TextBlock]) -> list[TextBlock]:
                     break
             else:
                 groups.append([line])
-        out.extend(_union(g, joinable is _can_join_vertical) for g in groups)
+        out.extend(_union(g, joinable is _can_join_vertical, sep) for g in groups)
     return out

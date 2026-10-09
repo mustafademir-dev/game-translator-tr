@@ -10,7 +10,7 @@ from src.ocr.paddle import PADDLE_DIR
 from test_ocr_windows import SAMPLES, jp_font, render
 
 pytestmark = pytest.mark.skipif(
-    importlib.util.find_spec("paddleocr") is None or not (PADDLE_DIR / "rec").exists(),
+    importlib.util.find_spec("paddleocr") is None or not (PADDLE_DIR / "ja" / "rec" / "inference.pdmodel").exists(),
     reason="PaddleOCR kurulu değil (setup.py --paddle)")
 
 

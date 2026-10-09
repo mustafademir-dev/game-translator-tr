@@ -17,9 +17,10 @@ class FitResult:
     line_height: int
 
 
-def make_font(family: str, px: int) -> QFont:
+def make_font(family: str, px: int, bold: bool = False) -> QFont:
     f = QFont(family)
     f.setPixelSize(px)
+    f.setBold(bold)
     return f
 
 
@@ -47,17 +48,18 @@ def wrap(text: str, fm: QFontMetrics, width: int) -> list[str]:
     return lines or [""]
 
 
-def fit_text(text: str, w: int, h: int, family: str, max_px: int = 28, min_px: int = 12) -> FitResult:
+def fit_text(text: str, w: int, h: int, family: str, max_px: int = 28, min_px: int = 12,
+             bold: bool = False) -> FitResult:
     inner_w = max(1, w - 2 * PADDING)
     inner_h = max(1, h - 2 * PADDING)
     max_px = max(min_px, max_px)
     for px in range(max_px, min_px - 1, -1):
-        fm = QFontMetrics(make_font(family, px))
+        fm = QFontMetrics(make_font(family, px, bold))
         lines = wrap(text, fm, inner_w)
         lh = fm.lineSpacing()
         if lh * len(lines) <= inner_h:
             return FitResult(px, lines, h, lh)
-    fm = QFontMetrics(make_font(family, min_px))
+    fm = QFontMetrics(make_font(family, min_px, bold))
     lines = wrap(text, fm, inner_w)
     lh = fm.lineSpacing()
     return FitResult(min_px, lines, lh * len(lines) + 2 * PADDING, lh)

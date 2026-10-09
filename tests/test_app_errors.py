@@ -6,7 +6,7 @@ from src.config import Config
 def test_model_missing_emits_notification(qapp, tmp_path):
     cfg = Config(tmp_path / "settings.json")
     cfg.data["model_dir"] = str(tmp_path / "yok")
-    p = app_mod.Pipeline(cfg)
+    p = app_mod.Pipeline(cfg, "ko")  # Korece NLLB'ye muhtaç (Japonca/İngilizce artık NLLB'siz çalışabilir)
     got = []
     p.error.connect(got.append)
     assert p._load_backend() is False
@@ -20,7 +20,7 @@ def test_ocr_missing_message_has_install_command():
 def test_ocr_unavailable_emits_notification(qapp, tmp_path, monkeypatch):
     from src.ocr import OcrUnavailableError
 
-    def boom(name):
+    def boom(name, lang="ja"):
         raise OcrUnavailableError("yok")
 
     monkeypatch.setattr(app_mod, "create_engine", boom)

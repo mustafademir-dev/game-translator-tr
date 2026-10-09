@@ -122,3 +122,42 @@ Gözlem: doğrudan mod 2 kat hızlı ve çoğu replikte yeterli. Pivot bazen dah
   benzetimiyle test edildi.
 - Tek monitör; çoklu monitör ve monitörler arası farklı ölçek desteklenmiyor.
 - Kişi adı çevirileri zayıf; sözlük gerektirir.
+
+## Ek (2026-10-08): Korece ve İngilizce kaynak dil
+
+Kullanıcı isteğiyle eklendi (SPEC yalnızca Japonca içeriyordu). Çıkış her zaman Türkçe.
+
+- Dil, seçim ekranında oyun başına seçilir ve profile kaydedilir (`--lang ja|ko|en` ile de verilebilir).
+  Seçili dilde olmayan metinler atlanır.
+- Windows OCR: bu makinede Japonca, Korece ve İngilizce paketleri kurulu.
+- PaddleOCR: üç dilin modelleri `models/paddle/<dil>/` altında. İngilizce model indirmesi iki kez
+  bağlantı kopmasıyla yarım kaldı; `setup.py` artık yarım dosyaları silip 5 kez yeniden deniyor.
+  Ayrıca motor, klasörün değil `inference.pdmodel` dosyasının varlığına bakıyor; aksi halde
+  PaddleOCR eksik modeli çalışırken indirmeye kalkıyordu (offline kuralı).
+- Testler: **68 test** (önceki 52 + 16 yeni). Fareyi oynatan 2 test (tıklama, sürükleme) bu turda
+  kullanıcı bilgisayardayken çalıştırılmadı; kalan 66 test geçti.
+
+| OCR benzerliği (2 satırlık paragraf) | Windows OCR | PaddleOCR |
+|---|---|---|
+| Korece | 0.99 | 0.98 |
+| İngilizce | 1.00 | 0.99 |
+
+Benchmark (`tools/benchmark.py --lang`, 15 cümle; aynı oturumda Japonca da yeniden ölçüldü):
+
+| Dil | Doğrudan medyan | 20–100 karakter medyan |
+|---|---|---|
+| Japonca (yeniden) | 940 ms | 1144 ms |
+| Korece | 1239 ms | 1615 ms |
+| İngilizce | 1300 ms | 1389 ms |
+
+Bu ölçümde Japonca da ilk ölçümün (470 ms) iki katından yavaş çıktı; kod değişmediği için fark
+makinenin o anki yükünden (oturumda açık uygulamalar) kaynaklanıyor. Diller arası fark küçük;
+Korece ve İngilizce cümleler bayt/token olarak daha uzun olduğu için biraz daha yavaş.
+
+Örnekler: 이 마을에는 옛날부터 이상한 전설이 있대. → *Bu kasabanın eski bir efsanesi var.* ·
+They say this town has had a strange legend for ages. → *Bu kasabanın çağlardır garip bir efsanesi
+olduğunu söylüyorlar.* İsim hatası Korecede de var (다나카 → *Danaka*); sözlükle düzeltilir.
+
+Aynı turda eklenenler: açılışta "Hazır" bildirimi ve terminale durum satırları (sessiz kalma
+sorunu), siyah ekran yakalama uyarısı, varsayılan modun serbest konum olması, `baslat.bat`,
+NLLB'nin başa eklediği altyazı tiresinin ("- ") silinmesi.

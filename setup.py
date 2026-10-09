@@ -3,6 +3,7 @@
 Kullanım (Python 3.11 ile):
     py -3.11 setup.py            # venv, bağımlılıklar, model, font
     py -3.11 setup.py --paddle   # ek olarak PaddleOCR (isteğe bağlı)
+    py -3.11 setup.py --sugoi    # Japonca için Sugoi (ja→en) modeli (isteğe bağlı, lisansa bakın)
     py -3.11 setup.py --model 600M   # RAM ölçümünü yok say, modeli zorla
 """
 from __future__ import annotations
@@ -50,7 +51,20 @@ MODEL_IDS = {
 FONT_URL = "https://github.com/google/fonts/raw/main/ofl/notosans/NotoSans%5Bwdth%2Cwght%5D.ttf"
 FONT_LICENSE_URL = "https://github.com/google/fonts/raw/main/ofl/notosans/OFL.txt"
 
-OCR_CAPABILITY_CMD = 'Add-WindowsCapability -Online -Name "Language.OCR~~~ja-JP~0.0.1.0"'
+# Kaynak diller: kod -> (Windows OCR dil paketi, PaddleOCR dil adı). Hedef her zaman Türkçe.
+OCR_CAPABILITIES = {
+    "ja": "Language.OCR~~~ja-JP~0.0.1.0",
+    "ko": "Language.OCR~~~ko-KR~0.0.1.0",
+    "en": "Language.OCR~~~en-US~0.0.1.0",
+}
+PADDLE_LANGS = {"ja": "japan", "ko": "korean", "en": "en"}
+
+SUGOI_REPO = "entai2965/sugoi-v4-ja-en-ctranslate2"
+SUGOI_DIR = MODELS / "sugoi-v4-ja-en-ct2"
+SUGOI_LICENSE_NOTE = (
+    "Sugoi modeli NTT JParaCrawl lisanslıdır: yalnızca araştırma amaçlı kullanım, ticari kullanım "
+    "yasak; indirmek şartları kabul etmek sayılır. Ayrıntı: models/sugoi-v4-ja-en-ct2/LICENSE"
+)
 
 
 def log(msg: str) -> None:
@@ -152,6 +166,79 @@ def download(url: str, dest: Path) -> None:
     raise SystemExit(f"{dest.name} indirilemedi; ağ bağlantısını kontrol edip setup.py'yi yeniden çalıştırın.")
 
 
+def install_sugoi() -> None:
+    if (SUGOI_DIR / "model.bin").exists():
+        log(f"Sugoi zaten var: {SUGOI_DIR}")
+        return
+    log(SUGOI_LICENSE_NOTE)
+    run([venv_python(), "-m", "pip", "install", "-q", "huggingface_hub>=0.23"])
+    script = ("from huggingface_hub import snapshot_download;"
+              f"snapshot_download({SUGOI_REPO!r}, local_dir={str(SUGOI_DIR)!r})")
+    env = dict(os.environ, HF_HUB_DISABLE_TELEMETRY="1")
+    for attempt in range(1, 7):  # bağlantı koparsa kaldığı yerden devam eder
+        log(f"Sugoi indiriliyor (deneme {attempt})")
+        if subprocess.call([str(venv_python()), "-c", script], env=env) == 0:
+            log(f"Sugoi hazır: {SUGOI_DIR}")
+            return
+        time.sleep(5 * attempt)
+    log("UYARI: Sugoi indirilemedi; Japonca için NLLB kullanılır. setup.py --sugoi'yi yeniden çalıştırın.")
+
+
+OPUS_REPO = "Helsinki-NLP/opus-mt-tc-big-en-tr"  # CC-BY 4.0
+OPUS_DIR = MODELS / "opus-mt-tc-big-en-tr-ct2-int8"
+
+
+def install_opus() -> None:
+    """Hızlı İngilizce→Türkçe (Japonca zincirinin 2. adımı ve İngilizce oyunlar)."""
+    if (OPUS_DIR / "model.bin").exists():
+        log(f"opus-mt en-tr zaten var: {OPUS_DIR}")
+        return
+    run([venv_python(), "-m", "pip", "install", "-q", "torch", "--index-url", TORCH_INDEX])
+    run([venv_python(), "-m", "pip", "install", "-q", *CONVERT_PACKAGES])
+    hf_dir = MODELS / "hf" / "opus-mt-tc-big-en-tr"
+    script = ("from huggingface_hub import snapshot_download;"
+              f"snapshot_download({OPUS_REPO!r}, local_dir={str(hf_dir)!r},"
+              "allow_patterns=['*.json','*.spm','pytorch_model.bin'])")
+    env = dict(os.environ, HF_HUB_DISABLE_TELEMETRY="1")
+    for attempt in range(1, 7):
+        log(f"opus-mt en-tr indiriliyor (deneme {attempt})")
+        if subprocess.call([str(venv_python()), "-c", script], env=env) == 0:
+            break
+        time.sleep(5 * attempt)
+    else:
+        log("UYARI: opus-mt en-tr indirilemedi; İngilizce→Türkçe için NLLB kullanılır.")
+        return
+    converter = VENV / "Scripts" / "ct2-transformers-converter.exe"
+    run([converter, "--model", hf_dir, "--output_dir", OPUS_DIR, "--quantization", "int8",
+         "--copy_files", "source.spm", "target.spm", "--force"])
+    shutil.rmtree(hf_dir, ignore_errors=True)
+    log(f"opus-mt en-tr hazır: {OPUS_DIR}")
+
+
+MANGA_REPO = "kha-white/manga-ocr-base"  # Apache-2.0
+MANGA_DIR = MODELS / "manga-ocr-base"
+
+
+def install_manga() -> None:
+    """Resim modu için manga OCR (dikey Japonca + furigana). torch/transformers gerekir."""
+    if (MANGA_DIR / "pytorch_model.bin").exists():
+        log(f"manga-ocr zaten var: {MANGA_DIR}")
+        return
+    run([venv_python(), "-m", "pip", "install", "-q", "torch", "--index-url", TORCH_INDEX])
+    run([venv_python(), "-m", "pip", "install", "-q", *CONVERT_PACKAGES])
+    script = ("from huggingface_hub import snapshot_download;"
+              f"snapshot_download({MANGA_REPO!r}, local_dir={str(MANGA_DIR)!r},"
+              "allow_patterns=['*.json','vocab.txt','pytorch_model.bin'])")
+    env = dict(os.environ, HF_HUB_DISABLE_TELEMETRY="1")
+    for attempt in range(1, 7):
+        log(f"manga-ocr indiriliyor (deneme {attempt})")
+        if subprocess.call([str(venv_python()), "-c", script], env=env) == 0:
+            log(f"manga-ocr hazır: {MANGA_DIR}")
+            return
+        time.sleep(5 * attempt)
+    log("UYARI: manga-ocr indirilemedi; resim modunda Windows OCR kullanılır.")
+
+
 def install_font() -> None:
     download(FONT_URL, ASSETS / "NotoSans.ttf")
     download(FONT_LICENSE_URL, ASSETS / "OFL.txt")
@@ -161,14 +248,24 @@ def install_paddle() -> None:
     run([venv_python(), "-m", "pip", "install", "-q", *PADDLE_PACKAGES])
     # Modelleri şimdi indir; uygulama çalışırken bu klasörden okunur.
     # Göreli yol: Paddle ASCII dışı mutlak yolları (ör. "Masaüstü") açamıyor.
-    script = (
-        "from paddleocr import PaddleOCR;"
-        "PaddleOCR(lang='japan', use_angle_cls=False, show_log=False,"
-        "det_model_dir='models/paddle/det', rec_model_dir='models/paddle/rec',"
-        "cls_model_dir='models/paddle/cls')"
-    )
-    log("PaddleOCR modelleri indiriliyor")
-    subprocess.check_call([str(venv_python()), "-c", script], cwd=ROOT)
+    for code, paddle_lang in PADDLE_LANGS.items():
+        rel = f"models/paddle/{code}"
+        script = (
+            "from paddleocr import PaddleOCR;"
+            f"PaddleOCR(lang={paddle_lang!r}, use_angle_cls=False, show_log=False,"
+            f"det_model_dir='{rel}/det', rec_model_dir='{rel}/rec', cls_model_dir='{rel}/cls')"
+        )
+        for attempt in range(1, 6):
+            # Kopan bağlantı yarım .tar.tmp bırakır; PaddleOCR onu tamamlayamaz, silinmeli.
+            for part in (ROOT / rel).glob("*/*.tmp"):
+                part.unlink()
+            log(f"PaddleOCR modelleri indiriliyor: {code} (deneme {attempt})")
+            if subprocess.call([str(venv_python()), "-c", script], cwd=ROOT) == 0:
+                break
+            time.sleep(5 * attempt)
+        else:
+            log(f"UYARI: PaddleOCR {code} modelleri indirilemedi; o dil için Windows OCR kullanılır. "
+                "Ağ bağlantısını kontrol edip 'setup.py --paddle'ı yeniden çalıştırın.")
 
 
 def write_settings(choice: str) -> None:
@@ -191,11 +288,13 @@ def check_ocr_language() -> None:
         ).stdout.split()
     except Exception:
         out = []
-    if any(tag.lower().startswith("ja") for tag in out):
-        log("Windows OCR Japonca desteği: VAR")
-    else:
-        log("Windows OCR Japonca desteği: YOK. Yönetici PowerShell'de şunu çalıştırın:")
-        log(f"    {OCR_CAPABILITY_CMD}")
+    installed = {tag.lower().split("-")[0] for tag in out}
+    for code, capability in OCR_CAPABILITIES.items():
+        if code in installed:
+            log(f"Windows OCR {code} desteği: VAR")
+        else:
+            log(f"Windows OCR {code} desteği: YOK. O dil için yönetici PowerShell'de çalıştırın:")
+            log(f'    Add-WindowsCapability -Online -Name "{capability}"')
 
 
 def main() -> None:
@@ -203,6 +302,10 @@ def main() -> None:
         sys.stdout.reconfigure(errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--paddle", action="store_true", help="PaddleOCR'ı da kur")
+    ap.add_argument("--manga", action="store_true",
+                    help="resim modu için manga OCR'ı kur (dikey yazı; --paddle ile birlikte en iyisi)")
+    ap.add_argument("--sugoi", action="store_true",
+                    help="Japonca için Sugoi ja→en modelini kur (NTT lisansı: yalnızca araştırma amaçlı)")
     ap.add_argument("--model", choices=sorted(MODEL_IDS), help="RAM ölçümü yerine bu modeli kur")
     args = ap.parse_args()
 
@@ -210,6 +313,11 @@ def main() -> None:
     choice = choose_model(args.model)
     install_model(choice)
     install_font()
+    install_opus()
+    if args.sugoi:
+        install_sugoi()
+    if args.manga:
+        install_manga()
     if args.paddle:
         install_paddle()
     write_settings(choice)

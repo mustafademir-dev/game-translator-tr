@@ -61,6 +61,10 @@ class OverlayWindow(_NativeStyled):
         super().__init__()
         self.font_family = font_family
         self.max_px, self.min_px = max_px, min_px
+        self.bold = False
+        self.text_color = "auto"        # "auto" (arka plana göre) | "white" | "black"
+        self.box_opacity = 100          # kutu opaklığı, %
+        self.follow_original = True     # serbest mod: punto orijinal yazının boyunu geçmesin
         self.mode = "fixed"
         self.box: list[int] | None = None
         self.region: list[int] | None = None
@@ -73,6 +77,14 @@ class OverlayWindow(_NativeStyled):
         self._region_draft: QRect | None = None
 
     # --- durum ---
+    def set_style(self, family: str, max_px: int, min_px: int, bold: bool, text_color: str,
+                  box_opacity: int, follow_original: bool) -> None:
+        """Ayarlar penceresinden: değişiklik ekrandaki kutulara anında uygulanır."""
+        self.font_family, self.max_px, self.min_px = family, max_px, min_px
+        self.bold, self.text_color, self.box_opacity = bold, text_color, box_opacity
+        self.follow_original = follow_original
+        self._relayout()
+
     def set_target_rect(self, x: int, y: int, w: int, h: int) -> None:
         if self.geometry() != QRect(x, y, w, h):
             self.setGeometry(x, y, w, h)
@@ -112,8 +124,11 @@ class OverlayWindow(_NativeStyled):
         for it in self.items:
             if self.mode == "fixed":
                 it.x, it.y, it.w, it.h = self.box or self.default_box()
-            max_px = self.max_px if self.mode == "fixed" else max(self.min_px, min(self.max_px, it.h - 2 * PADDING))
-            self._layout.append((it, fit_text(it.text, it.w, it.h, self.font_family, max_px, self.min_px)))
+            max_px = self.max_px
+            if self.mode == "free" and self.follow_original:
+                max_px = max(self.min_px, min(self.max_px, it.h - 2 * PADDING))
+            self._layout.append((it, fit_text(it.text, it.w, it.h, self.font_family, max_px, self.min_px,
+                                              self.bold)))
         self.update()
 
     # --- çizim ---
@@ -142,9 +157,10 @@ class OverlayWindow(_NativeStyled):
         rects = []
         for it, fit in self._layout:
             h = max(it.h, fit.height)
-            p.fillRect(it.x, it.y, it.w, h, QColor(*it.bg))
-            p.setFont(make_font(self.font_family, fit.px))
-            p.setPen(QColor(*it.fg))
+            p.fillRect(it.x, it.y, it.w, h, QColor(*it.bg, round(2.55 * self.box_opacity)))
+            p.setFont(make_font(self.font_family, fit.px, self.bold))
+            fg = {"white": (255, 255, 255), "black": (0, 0, 0)}.get(self.text_color, it.fg)
+            p.setPen(QColor(*fg))
             total = fit.line_height * len(fit.lines)
             y = it.y + max(PADDING, (h - total) // 2)
             for line in fit.lines:

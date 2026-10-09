@@ -2,11 +2,20 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
-SRC_LANG = "jpn_Jpan"
+SRC_LANG = "jpn_Jpan"  # varsayılan kaynak; `src_lang` ile değiştirilir (kor_Hang, eng_Latn)
 PIVOT_LANG = "eng_Latn"
 TGT_LANG = "tur_Latn"
+
+
+# NLLB altyazı verisiyle eğitildiği için kısa cümlelerin başına "- " ekleyebiliyor.
+_SUBTITLE_DASH = re.compile(r"^\s*-\s+")
+
+
+def _clean(text: str) -> str:
+    return _SUBTITLE_DASH.sub("", text.strip())
 
 
 class ModelNotFoundError(RuntimeError):
@@ -33,24 +42,27 @@ class NllbBackend:
         self.sp = spm.SentencePieceProcessor(model_proto=sp_path.read_bytes())
         self.beam_size = beam_size
         self.pivot = pivot
+        self.src_lang = SRC_LANG
 
     def _run(self, texts: list[str], src: str, tgt: str) -> list[str]:
         if not texts:
             return []
         sources = [[src, *self.sp.encode(t, out_type=str), "</s>"] for t in texts]
+        from .sugoi import decode_limit
         results = self.translator.translate_batch(
             sources,
             target_prefix=[[tgt]] * len(sources),
             beam_size=self.beam_size,
-            max_decoding_length=256,
+            max_decoding_length=decode_limit(sources),
             repetition_penalty=1.1,
         )
-        return [self.sp.decode(r.hypotheses[0][1:]).strip() for r in results]
+        return [_clean(self.sp.decode(r.hypotheses[0][1:])) for r in results]
 
     def translate_batch(self, texts: list[str]) -> list[str]:
-        if self.pivot:
-            return self._run(self._run(texts, SRC_LANG, PIVOT_LANG), PIVOT_LANG, TGT_LANG)
-        return self._run(texts, SRC_LANG, TGT_LANG)
+        # Kaynak zaten İngilizceyse pivot adımı anlamsız: doğrudan çevir.
+        if self.pivot and self.src_lang != PIVOT_LANG:
+            return self._run(self._run(texts, self.src_lang, PIVOT_LANG), PIVOT_LANG, TGT_LANG)
+        return self._run(texts, self.src_lang, TGT_LANG)
 
     def translate(self, text: str, context: list[str] = []) -> str:
         return self.translate_batch([text])[0]

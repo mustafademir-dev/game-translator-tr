@@ -6,7 +6,7 @@ import threading
 from .backend import TranslationBackend
 from .cache import TranslationCache
 from .dictionary import Dictionary
-from .text import split_sentences
+from .text import DEFAULT_LANG, LANGS, split_sentences
 
 
 class TranslationService:
@@ -16,6 +16,8 @@ class TranslationService:
         self.dictionary = dictionary or Dictionary()
         self.cache = TranslationCache(cache_size)
         self._lock = threading.Lock()  # backend aynı anda tek çağrı alır
+        self.lang = DEFAULT_LANG
+        self.backend.src_lang = LANGS[self.lang].nllb
 
     def set_dictionary(self, dictionary: Dictionary) -> None:
         if dictionary.signature() != self.dictionary.signature():
@@ -27,6 +29,13 @@ class TranslationService:
             self.backend.pivot = pivot
             self.cache.clear()
 
+    def set_language(self, lang: str) -> None:
+        """Kaynak dil: "ja" | "ko" | "en". Hedef her zaman Türkçe."""
+        if lang != self.lang:
+            self.lang = lang
+            self.backend.src_lang = LANGS[lang].nllb
+            self.cache.clear()
+
     def translate(self, text: str) -> str:
         text = text.strip()
         if not text:
@@ -34,7 +43,7 @@ class TranslationService:
         cached = self.cache.get(text)
         if cached is not None:
             return cached
-        pieces = split_sentences(self.dictionary.apply(text))
+        pieces = split_sentences(self.dictionary.apply(text), self.lang)
         with self._lock:
             if hasattr(self.backend, "translate_batch"):
                 out = self.backend.translate_batch(pieces)
