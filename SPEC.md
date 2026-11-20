@@ -4,7 +4,7 @@ Bu dosya Claude Code için yazıldı. Kullanıcı başında değil: soru sorma, 
 
 ## 1. Ne yapılıyor
 
-Japonca metin tabanlı oyunlarda ve görsel romanlarda ekrandaki yazıyı otomatik algılayıp Türkçeye çeviren, çeviriyi orijinal yazının tam üstüne çizen bir Windows masaüstü uygulaması. Tek kullanıcı, tek bilgisayar, kişisel kullanım.
+Uygulamalarda, oyunlarda ve resimlerde ekrandaki Japonca/Korece/İngilizce yazıyı otomatik algılayıp Türkçeye çeviren, çeviriyi orijinal yazının tam üstüne çizen bir Windows masaüstü uygulaması. Tek kullanıcı, tek bilgisayar, kişisel kullanım.
 
 ## 2. Değişmez kurallar
 
@@ -153,7 +153,7 @@ Add-WindowsCapability -Online -Name "Language.OCR~~~ja-JP~0.0.1.0"
 - `setup.py`: venv bağımlılıkları, RAM ölçümü, model indirme, CTranslate2 int8 dönüşümü, font indirme.
 - Çeviri modülü, cache, sözlük.
 - `tools/benchmark.py`: bir metin dosyasındaki cümleleri hem doğrudan hem pivot modda çevirir; her cümle için iki çeviriyi ve süreleri yan yana ekrana basar, sonda medyan ve p95 süre.
-- `tools/benchmark_sentences.txt`: 30 adet görsel roman tarzı Japonca replik yaz (kısa, uzun, soru, hitaplı, isimli, özne düşmüş). Kullanıcı sonra kendi cümleleriyle değiştirecek.
+- `tools/benchmark_sentences.txt`: 30 adet diyalog tarzı Japonca cümle yaz (kısa, uzun, soru, hitaplı, isimli, özne düşmüş). Kullanıcı sonra kendi cümleleriyle değiştirecek.
 - **Bitti ölçütü:** benchmark çalışıyor; 20-100 karakterlik cümlede medyan süre 1 saniyenin altında. Değilse 600M modele düş ve README'ye yaz.
 
 ### Aşama 2 — Sabit kutu modu

@@ -1,8 +1,8 @@
 # Kullanım Kılavuzu (ayrıntılı)
 
-Metin tabanlı oyunlarda ve görsel romanlarda ekrandaki **Japonca, Korece ya da İngilizce**
+Uygulamalarda, oyunlarda ve resimlerde ekrandaki **Japonca, Korece ya da İngilizce**
 yazıyı Türkçeye çevirip orijinal yazının üstüne çizen, **tamamen offline** çalışan bir Windows
-masaüstü uygulaması. Çıkış dili her zaman Türkçedir; kaynak dil oyuna göre seçilir.
+masaüstü uygulaması. Çıkış dili her zaman Türkçedir; kaynak dil içeriğe göre seçilir.
 
 - Çeviri: NLLB-200 (distilled 1.3B ya da 600M), CTranslate2, int8, **yalnızca CPU**
 - OCR: Windows dahili OCR (varsayılan) ya da PaddleOCR (isteğe bağlı)
@@ -117,12 +117,12 @@ sürüklemek de olur.
 | F (F11) / Esc | Tam ekran / çık |
 | S | Ayarlar (yazı tipi, punto, opaklık...) |
 
-**Manga / dikey yazı:** Japonca resimlerde, `py -3.11 setup.py --paddle --manga` ile kurulduysa
-otomatik olarak **manga OCR** kullanılır: yazı bölgeleri PaddleOCR'ın tespit kısmıyla bulunur,
-aynı balondaki sütunlar birleştirilir, her balon manga-ocr (kha-white/manga-ocr-base, Apache-2.0)
+**Dikey yazı:** Japonca resimlerde, `py -3.11 setup.py --paddle --manga` ile kurulduysa
+otomatik olarak **dikey yazı OCR'ı** kullanılır: yazı bölgeleri PaddleOCR'ın tespit kısmıyla bulunur,
+aynı bölgedeki sütunlar birleştirilir, her bölge manga-ocr (kha-white/manga-ocr-base, Apache-2.0)
 ile okunur. Dikey yazıyı doğru sırayla okur, furigana'yı görmezden gelir. Sayfa başına birkaç
 saniye sürer (siz okurken sonraki sayfalar arka planda hazırlanır). Eğik ya da süslü yazılar
-(efekt sesleri) hâlâ hatalı okunabilir. İsimler için sözlük kullanın (ör. `"イルカ": "Iruka"`;
+hâlâ hatalı okunabilir. İsimler için sözlük kullanın (ör. `"イルカ": "Iruka"`;
 yoksa "yunus" diye çevrilir).
 
 ### Oyunu çerçevesiz pencere modunda açın

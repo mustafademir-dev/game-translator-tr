@@ -16,7 +16,7 @@ içindeki `LANGS` tablosuna bir satır ve o dilin OCR paketi demektir (ör. Çin
 
 | Mod | Ne zaman kullanılır | Metin nereden gelir |
 |---|---|---|
-| Sabit kutu | Diyalog kutusu hep aynı yerdeyse (çoğu görsel roman) | Textractor → pano |
+| Sabit kutu | Diyalog kutusu hep aynı yerdeyse (ör. diyalog kutulu uygulamalar) | Textractor → pano |
 | Serbest konum | Yazılar ekranın farklı yerlerinde çıkıyorsa | Ekran yakalama + OCR |
 
 ### Özellikler

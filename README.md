@@ -1,7 +1,7 @@
-# Oyun Çevirmeni — Japonca / Korece / İngilizce → Türkçe
+# Yerel Ekran Çevirmeni — Japonca / Korece / İngilizce → Türkçe
 
-**Oyunlardaki, görsel romanlardaki ve resimlerdeki yazıyı ekrandan okuyup Türkçe çevirisini
-yazının tam üstüne çizen, tamamen internetsiz çalışan bir Windows uygulaması.**
+**Ekrandaki herhangi bir uygulamanın, oyunun ya da resmin içindeki yazıyı anlık okuyup Türkçe
+çevirisini yazının tam üstüne çizen, tamamen yerel (internetsiz) çalışan bir Windows uygulaması.**
 
 ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D6)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB)
@@ -14,22 +14,22 @@ yazının tam üstüne çizen, tamamen internetsiz çalışan bir Windows uygula
 
 ## Neden?
 
-Japonca oyunların çoğunun Türkçesi yok. Çevrimiçi çeviri araçları ise ekrandaki metni bir
-sunucuya gönderiyor. Bu uygulama:
+Yabancı dildeki yazılımların, oyunların ve dokümanların çoğunun Türkçesi yok. Çevrimiçi çeviri
+araçları ise ekrandaki metni bir sunucuya gönderiyor. Bu uygulama:
 
 - **Hiçbir şeyi internete göndermez.** Modeller bir kez indirilir, sonra tamamen bilgisayarda çalışır.
 - **Kayıt tutmaz.** Ekran görüntüsü, okunan metin ve çeviri yalnızca bellekte durur; diske yazılmaz.
 - **İçerik filtresi yoktur.** Metin olduğu gibi çevrilir.
-- **Ekran kartına dokunmaz.** Her şey işlemcide çalışır; oyunun GPU'su oyuna kalır.
+- **Ekran kartına dokunmaz.** Her şey işlemcide çalışır; GPU çalışan uygulamaya kalır.
 
 ## Özellikler
 
 | | |
 |---|---|
-| 🎮 **Serbest konum modu** | Ekrandaki yazıyı okur (OCR), her yazının üstüne kendi çevirisini çizer. Pencere taşınınca takip eder, tıklamalar oyuna geçer. |
-| 📋 **Sabit kutu modu** | [Textractor](https://github.com/Artikash/Textractor) ile oyundan çekilen metni panodan alıp sabit bir kutuda gösterir. |
+| 🖥️ **Serbest konum modu** | Ekrandaki yazıyı okur (OCR), her yazının üstüne kendi çevirisini çizer. Pencere taşınınca takip eder, tıklamalar alttaki uygulamaya geçer. |
+| 📋 **Sabit kutu modu** | Panoya kopyalanan metni (ör. [Textractor](https://github.com/Artikash/Textractor) ile uygulamadan çekilen) sabit bir kutuda gösterir. |
 | 🖼️ **Resim modu** | Klasördeki resimleri tıklayarak gezer; resmin her yerindeki büyük-küçük yazıları çevirir. Sonraki resimler arka planda hazırlanır. |
-| 📖 **Manga desteği** | Dikey yazı ve furigana için balon balon okuyan [manga-ocr](https://github.com/kha-white/manga-ocr). |
+| 📖 **Dikey yazı desteği** | Dikey Japonca ve furigana için bölge bölge okuyan özel OCR modeli ([manga-ocr](https://github.com/kha-white/manga-ocr)). |
 | ⌨️ **Akıllı tıklama** | Yazı akarken tıklarsanız tamamını hemen çevirir; sayfa değişince eski çeviriyi siler. |
 | 🧠 **Yarım metni çevirmez** | Harf harf akan yazı bitmeden çeviri yapılmaz; OCR gürültüsü çeviriyi titretmez. |
 | 🎨 **Ayarlar penceresi** | Yazı tipi, punto, renk, kutu opaklığı… değişiklikler ekrana anında yansır. |
@@ -40,7 +40,7 @@ sunucuya gönderiyor. Bu uygulama:
 ```mermaid
 flowchart LR
     A[Ekran / resim] --> B[Değişim tespiti]
-    B --> C[OCR<br/>Windows OCR · PaddleOCR · manga-ocr]
+    B --> C[OCR<br/>Windows OCR · PaddleOCR · dikey yazı OCR]
     C --> D[Metin doğrulama<br/>yarım metin bekletilir]
     D --> E{Dil}
     E -- Japonca --> F[Sugoi<br/>ja→en] --> G[opus-mt<br/>en→tr]
@@ -70,10 +70,10 @@ git clone https://github.com/Blockchaindeveloper43/game-translator-tr.git
 cd game-translator-tr
 py -3.11 setup.py                    # venv, NLLB, opus-mt, font
 py -3.11 setup.py --sugoi            # Japonca için önerilir (lisansa bakın)
-py -3.11 setup.py --paddle --manga   # resim modu / manga için (isteğe bağlı)
+py -3.11 setup.py --paddle --manga   # resim modu / dikey yazı OCR için (isteğe bağlı)
 ```
 
-Windows OCR'da oyunun dili yoksa (yönetici PowerShell'de):
+Windows OCR'da kaynak dil yüklü değilse (yönetici PowerShell'de):
 
 ```powershell
 Add-WindowsCapability -Online -Name "Language.OCR~~~ja-JP~0.0.1.0"
@@ -81,7 +81,7 @@ Add-WindowsCapability -Online -Name "Language.OCR~~~ja-JP~0.0.1.0"
 
 ## Kullanım
 
-`baslat.bat`'a çift tıklayın → oyun penceresini, modu ve dili seçin → **Başlat**.
+`baslat.bat`'a çift tıklayın → çevrilecek pencereyi, modu ve dili seçin → **Başlat**.
 Resimler için aynı ekrandan **Klasör aç...** / **Resim aç...**
 
 | Kısayol | İş |
@@ -119,10 +119,10 @@ src/
   app.py            ana döngü, kısayollar, seçim ekranı
   imagemode.py      resim modu (görüntüleyici + arka plan işçisi)
   translate/        NLLB, Sugoi, opus-mt, zincir kurucu, önbellek, sözlük
-  ocr/              Windows OCR, PaddleOCR, manga OCR, satır birleştirme, metin doğrulama
+  ocr/              Windows OCR, PaddleOCR, dikey yazı OCR, satır birleştirme, metin doğrulama
   capture/          ekran yakalama, değişim tespiti
   overlay/          şeffaf pencere, metin sığdırma, ayarlar penceresi
-tools/              benchmark, sahte oyun (testler için)
+tools/              benchmark, test uygulaması (testler için)
 tests/              birim ve uçtan uca testler
 ```
 
@@ -137,7 +137,7 @@ Modeller depoda yoktur; `setup.py` kurulumda indirir.
 | [NLLB-200 distilled](https://huggingface.co/facebook/nllb-200-distilled-1.3B) | Korece ve yedek çeviri | CC-BY-NC 4.0 (ticari olmayan) |
 | [opus-mt-tc-big-en-tr](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-en-tr) | İngilizce → Türkçe | CC-BY 4.0 |
 | [Sugoi v4 ja-en](https://huggingface.co/entai2965/sugoi-v4-ja-en-ctranslate2) | Japonca → İngilizce | NTT JParaCrawl: yalnızca araştırma amaçlı, ticari değil |
-| [manga-ocr-base](https://huggingface.co/kha-white/manga-ocr-base) | Manga OCR | Apache-2.0 |
+| [manga-ocr-base](https://huggingface.co/kha-white/manga-ocr-base) | Dikey Japonca OCR | Apache-2.0 |
 | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | OCR (isteğe bağlı) | Apache-2.0 |
 | [Noto Sans](https://fonts.google.com/noto/specimen/Noto+Sans) | Overlay yazı tipi | SIL OFL 1.1 |
 
@@ -145,6 +145,6 @@ Bu proje kişisel kullanım içindir; modellerin lisansları ticari kullanıma i
 
 ## Bilinen sınırlar
 
-- Tek monitör; exclusive fullscreen oyunlarda overlay görünmez (pencereli / çerçevesiz kullanın).
-- Eğik ya da süslü yazılar (manga efekt sesleri) hatalı okunabilir.
+- Tek monitör; tam ekran (exclusive fullscreen) uygulamalarda overlay görünmez (pencereli / çerçevesiz kullanın).
+- Eğik ya da süslü yazılar hatalı okunabilir.
 - Çeviri bağlam bilmez; isimler için sözlük gerekir.
