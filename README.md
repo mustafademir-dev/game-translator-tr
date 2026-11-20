@@ -66,7 +66,7 @@ hem daha doğru hem ~3 kat daha hızlı.
 Gerekenler: **Windows 10 (2004+) / 11**, **Python 3.11**, kurulum için internet.
 
 ```powershell
-git clone https://github.com/Blockchaindeveloper43/game-translator-tr.git
+git clone https://github.com/mustafademir-dev/game-translator-tr.git
 cd game-translator-tr
 py -3.11 setup.py                    # venv, NLLB, opus-mt, font
 py -3.11 setup.py --sugoi            # Japonca için önerilir (lisansa bakın)
